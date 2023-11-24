@@ -1,0 +1,52 @@
+import os
+import requests
+from google.oauth2 import service_account
+from googleapiclient.discovery import build
+
+# OneDrive API credentials
+onedrive_access_token = "YOUR_ONEDRIVE_ACCESS_TOKEN"
+
+# Google Drive API credentials
+google_drive_credentials = "path/to/your/credentials.json"
+google_drive_folder_id = "YOUR_GOOGLE_DRIVE_FOLDER_ID"
+
+# Initialize Google Drive API service
+credentials = service_account.Credentials.from_service_account_file(google_drive_credentials)
+drive_service = build('drive', 'v3', credentials=credentials)
+
+# Set OneDrive API endpoint and headers
+onedrive_api_url = "https://graph.microsoft.com/v1.0/me/drive/root/children"
+headers = {
+    "Authorization": "Bearer " + onedrive_access_token,
+    "Content-Type": "application/json"
+}
+
+# Get files from OneDrive
+response = requests.get(onedrive_api_url, headers=headers)
+files = response.json().get("value", [])
+
+# Transfer files to Google Drive
+for file in files:
+    file_name = file["name"]
+    file_url = file["@microsoft.graph.downloadUrl"]
+
+    # Download file from OneDrive
+    response = requests.get(file_url, allow_redirects=True)
+    file_path = f"temp/{file_name}"
+    with open(file_path, "wb") as f:
+        f.write(response.content)
+
+    # Upload file to Google Drive
+    file_metadata = {
+        "name": file_name,
+        "parents": [google_drive_folder_id]
+    }
+    media_body = googleapiclient.http.MediaFileUpload(file_path)
+    drive_service.files().create(body=file_metadata, media_body=media_body).execute()
+
+    # Remove temporary file
+    os.remove(file_path)
+
+print("Files transferred successfully!")
+
+
