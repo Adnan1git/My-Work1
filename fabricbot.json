@@ -11,6 +11,7 @@
         "taskName": "Remove no-recent-activity label if it was changed by anyone other than the bot and was not closed",
         "conditions": {
           "operator": "and",
+          "operator": "or"
           "operands": [
             {
               "operator": "not",
